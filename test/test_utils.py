@@ -10,7 +10,9 @@ from utils import (
     get_real_trade_date, 
     get_pre_trade_date, 
     get_next_trade_date,
-    fmt_symbols)
+    fmt_symbols,
+    get_trade_time_type
+    )
 
 def test_gen_trade_calendar():
     """
@@ -72,3 +74,14 @@ def test_fmt_symbols():
     assert "600000.XSHG" == fmt_symbols("600000", 'jq')
     assert ["000001.SZ", "600000.SH"] == fmt_symbols(["SZ000001", 'SH600000'], 'wd')
     assert ["000001", "600000"] == fmt_symbols(["SZ000001", 'SH600000'])
+
+def test_get_trade_time_type():
+    """
+    测试交易时间判断 
+    """
+    assert "others" == get_trade_time_type("2023-01-15 09:30:00")
+    assert "continuous" == get_trade_time_type("2023-01-16 09:30:00")
+    assert "auction1" == get_trade_time_type("2023-01-16 09:17:00")
+    assert "auction2" == get_trade_time_type("2023-01-16 09:23:00")
+    assert "auction3" == get_trade_time_type("2023-01-16 09:25:00")
+    assert "auction4" == get_trade_time_type("2023-01-16 14:58:00")
