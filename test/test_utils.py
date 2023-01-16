@@ -4,7 +4,13 @@ import sys
 
 sys.path.append("../hchyt")
 
-from utils import gen_trade_calendar, load_trade_cal, get_real_trade_date, get_pre_trade_date, get_next_trade_date
+from utils import (
+    gen_trade_calendar, 
+    load_trade_cal, 
+    get_real_trade_date, 
+    get_pre_trade_date, 
+    get_next_trade_date,
+    fmt_symbols)
 
 def test_gen_trade_calendar():
     """
@@ -55,3 +61,14 @@ def test_get_next_trade_date():
     assert "2023-01-16" == get_next_trade_date("2023-01-13")
     assert "2023-01-17" == get_next_trade_date("2023-01-13", n=2)
     assert "2023-01-16" == get_next_trade_date("2023-01-13", n=2, inclusive=True)
+
+def test_fmt_symbols():
+    """
+    测试格式化标的代码函数 
+    """
+    assert "SZSE.000001" == fmt_symbols("SZ000001", 'gm')
+    assert "000001.SZ" == fmt_symbols("000001", 'wd')
+    assert "000001.XSHE" == fmt_symbols("SZ000001", 'jq')
+    assert "600000.XSHG" == fmt_symbols("600000", 'jq')
+    assert ["000001.SZ", "600000.SH"] == fmt_symbols(["SZ000001", 'SH600000'], 'wd')
+    assert ["000001", "600000"] == fmt_symbols(["SZ000001", 'SH600000'])

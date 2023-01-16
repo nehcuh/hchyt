@@ -1,9 +1,8 @@
 import os
-import re
 import pytest
 import time
 import toml
-from typing import Union, List, Tuple
+from typing import Union, List
 import datetime
 import pickle
 import tushare as ts
@@ -228,54 +227,4 @@ def get_next_trade_date(
     else:
         return trade_calendar[trade_calendar.index(pd.Timestamp(get_real_trade_date(cursor_date, direction=1))) + n - 1].strftime("%Y-%m-%d")
 
-
-def fmt_symbols(
-    symbols: Union[str, List[str], Tuple[str]],
-    style: str=None
-) -> Union[str, List[str]]:
-    """
-    根据输入的股票或股票列表，和相应需要格式化的风格，实现标的代码的格式化
-    注意：
-        1. 如果输入的是单个标的，即 str 格式，返回的是 str，其他情况返回格式化标的列表
-        2. 只支持沪深交所，不支持北交所
-
-    Args:
-        symbols: 标的代码或标的代码列表
-        style: 标的编码风格，默认为 None，即只输出标的数字编号，支持 
-            - 'gm' 或 'goldminer'(掘金), 
-            - 'ts' 或 'tushare' (tushare)
-            - 'jq' 或 'joinquant' (聚宽), 
-            - 'wd' 或 'wind' (万得)
-
-    Returns:
-        格式化后的标的代码或标的列表
-    """
-    # 1. 编码中的数字规则
-    digit_pat = re.compile(r"\d+")
-
-    # 2. 处理输入标的编码
-    output_str_flag = False
-    if isinstance(symbols, str):
-        symbols = [symbols]
-        output_str_flag = True
-    symbols = ",".join(symbols)
-
-    # 3. 搜索所有数字编码
-    digit_symbols = re.findall(digit_pat, symbols)
-
-    # 4. 根据指定风格处理标的编码
-    if style in ['gm', 'goldminer']:
-        symbols = list(map(lambda x: "SHSE." + x if x[0] == '6' else "SZSE."+x, digit_symbols))
-    elif style in ['ts', 'tushare', 'wd', 'wind']:
-        symbols = list(map(lambda x: x+".SH" if x[0] == '6' else x+".SZ", digit_symbols))
-    elif style in ['jq', 'joinquant']:
-        symbols = list(map(lambda x: x+".XSHG" if x[0] == '6' else x+".XSHE", digit_symbols))
-    else:
-        raise ValueError("[ERROR]\t不支持的编码风格")
-
-    # 5. 返回结果
-    if output_str_flag:
-        return symbols[0]
-    return symbols 
-    
 
