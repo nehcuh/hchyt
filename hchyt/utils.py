@@ -1,6 +1,7 @@
 import os
+from functools import cache
 import re
-import pytest
+import datetime
 import time
 import toml
 from typing import Union, List, Tuple
@@ -90,6 +91,7 @@ def gen_trade_calendar(
         pickle.dump(sorted(list(set(df.loc[df.is_open == 1, 'cal_date'].to_list()))), f)
 
 
+@cache
 def load_trade_cal(local_cal: str=None) -> List[str]:
     """
     导入交易日历，本地日历文件不存在则进行网络全量获取
@@ -264,7 +266,9 @@ def fmt_symbols(
     digit_symbols = re.findall(digit_pat, symbols)
 
     # 4. 根据指定风格处理标的编码
-    if style in ['gm', 'goldminer']:
+    if not style:
+        symbols = digit_symbols
+    elif style in ['gm', 'goldminer']:
         symbols = list(map(lambda x: "SHSE." + x if x[0] == '6' else "SZSE."+x, digit_symbols))
     elif style in ['ts', 'tushare', 'wd', 'wind']:
         symbols = list(map(lambda x: x+".SH" if x[0] == '6' else x+".SZ", digit_symbols))
@@ -279,3 +283,77 @@ def fmt_symbols(
     return symbols 
     
 
+def get_trade_time_type(
+    cursor_time: Union[str, datetime.datetime, datetime.time, pd.Timestamp] = None,
+) -> str:
+    """
+    查询指定时间所处交易时间段
+        - "auction1": 9:15 ~ 9:20 可挂可撤
+        - "auction2": 9:20 ~ 9:25 可挂不可撤
+        - "auction3": 9:25 ~ 9:30 接收挂单，实际开盘价在 9:25
+        - "auction4": 14:57 ~ 15:00 可挂不可撤
+        - "continuous": 9:30 ~ 11:30/13:00 ~ 14:57 连续竞价
+        - "others": 其他非交易时间
+
+    Args:
+        time_str: 指定时间, 默认为当前时间
+
+    Returns:
+        str: 当前时间所处交易时间段
+    """
+    specific_times = [
+        datetime.time(9, 15), # 0
+        datetime.time(9, 20), # 1
+        datetime.time(9, 25), # 2
+        datetime.time(9, 30), # 3
+        datetime.time(11, 30), # 4
+        datetime.time(13, 00), # 5
+        datetime.time(14, 57), # 6
+        datetime.time(15, 0), # 7
+    ]
+    # 1. 指定时间格式化处理
+    if not cursor_time:
+        cursor_time = datetime.datetime.now().time()
+        cursor_date = pd.Timestamp(datetime.date.today()) 
+    elif isinstance(cursor_time, datetime.time):
+        cursor_date = pd.Timestamp(datetime.date.today())
+    else:
+        cursor_time = pd.Timestamp(cursor_time) 
+        cursor_date = pd.Timestamp(cursor_time.date())
+        cursor_time = cursor_time.time()
+
+    # 2. 判断时间所处时间段
+    trade_calendar = load_trade_cal()
+
+    if (
+        (cursor_date not in trade_calendar) 
+        or 
+        (cursor_time < specific_times[0]) 
+        or 
+        (cursor_time > specific_times[-1])
+        or
+        (cursor_time > specific_times[4] and cursor_time < specific_times[5])
+    ):
+        return "others"
+    elif (cursor_time >= specific_times[0] and cursor_time < specific_times[1]):
+        # 9:15 ~ 9:20
+        return "auction1"
+    elif (cursor_time >= specific_times[1] and cursor_time < specific_times[2]):
+        # 9:20 ~ 9:25
+        return "auction2"
+    elif (cursor_time >= specific_times[2] and cursor_time < specific_times[3]):
+        # 9:25 ~ 9:30
+        return "auction3"
+    elif (
+        (cursor_time >= specific_times[3] and cursor_time < specific_times[4])
+        or
+        (cursor_time >= specific_times[5] and cursor_time < specific_times[6])
+    ):
+        # 9:30 ~ 11:30
+        # 13:00 ~ 14:57
+        return "continuous"
+    elif (cursor_time >= specific_times[6] and cursor_time < specific_times[7]):
+        # 14:57 ~ 15:00
+        return "auction4" 
+    else:
+        return "others"

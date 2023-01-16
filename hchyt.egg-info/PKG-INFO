@@ -1,12 +1,10 @@
 Metadata-Version: 2.1
 Name: hchyt
-Version: 0.0.1
+Version: 0.0.2
 Summary: This is my quant box
 Home-page: https://github.com/nehcuh/hchyt
 Author: Hu Chen
 Author-email: curiousbull@163.com
-License: UNKNOWN
-Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
@@ -31,4 +29,3 @@ License-File: LICENSE
 - `get_real_trade_date`: 查询真实交易日
 - `get_pre_trade_date`: 查询历史交易日
 - `get_next_trade_date`: 查询未来交易日
-

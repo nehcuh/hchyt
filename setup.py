@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="hchyt",
-    version="0.0.1",
+    version="0.0.2",
     author="Hu Chen",
     author_email="curiousbull@163.com",
     description="This is my quant box",

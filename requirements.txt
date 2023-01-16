@@ -5,3 +5,5 @@ pandas
 pickle
 toml
 tushare
+functools
+pytest
