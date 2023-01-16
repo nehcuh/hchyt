@@ -1,6 +1,10 @@
 import pandas as pd
 import os
-from .utils import gen_trade_calendar, load_trade_cal, get_real_trade_date, get_pre_trade_date, get_next_trade_date
+import sys
+
+sys.path.append("../hchyt")
+
+from utils import gen_trade_calendar, load_trade_cal, get_real_trade_date, get_pre_trade_date, get_next_trade_date
 
 def test_gen_trade_calendar():
     """
