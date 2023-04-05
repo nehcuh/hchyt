@@ -78,7 +78,7 @@ def gen_trade_calendar(
 
     # 5. 查询交易日历，并以 list 形式保存到本地
     df = pro.trade_cal(exchange='', start_date=start_date, end_date=end_date)
-    df.loc[:, 'cal_date'] = pd.to_datetime(df['cal_date'])
+    df.loc[:, 'cal_date'] = pd.to_datetime(df['cal_date']).apply(lambda x: x.strftime("%Y-%m-%d"))
     if df.empty:
         try:
             time.sleep(seconds=60)
@@ -125,9 +125,9 @@ def get_real_trade_date(
     """
     # 1. 输入日期格式化处理
     if not cursor_date:
-        cursor_date = pd.Timestamp(datetime.date.today())
+        cursor_date = datetime.date.today().strftime("%Y-%m-%d")
     else:
-        cursor_date = pd.Timestamp(pd.Timestamp(cursor_date).date())
+        cursor_date = pd.Timestamp(cursor_date).strftime("%Y-%m-%d")
 
     # 2. 交易日历获取
     if not trade_cal_file:
@@ -137,24 +137,20 @@ def get_real_trade_date(
 
     # 3. 交易日期查询
     if cursor_date in trade_calendar:
-        return pd.Timestamp(cursor_date).strftime("%Y-%m-%d")
+        return cursor_date
     else:
-        if (cursor_date < trade_calendar[0]) or (cursor_date > trade_calendar[-1]):
+        if (pd.Timestamp(cursor_date) < pd.Timestamp(trade_calendar[0])) or (pd.Timestamp(cursor_date) > pd.Timestamp(trade_calendar[-1])):
             raise ValueError(f"[ERROR]\t交易日期 {cursor_date} 小于交易日历最小值 {trade_calendar[0]} 或大于交易日历最大值 {trade_calendar[-1]}")
         elif direction == -1:
             while cursor_date not in trade_calendar:
-                cursor_date = cursor_date - pd.Timedelta(days=1)
+                cursor_date = (pd.Timestamp(cursor_date) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
                 if cursor_date in trade_calendar:
-                    return cursor_date.strftime('%Y-%m-%d')
-                elif cursor_date < trade_calendar[0]:
-                    raise ValueError(f"[ERROR]\t交易日期 {cursor_date} 小于交易日历最小值 {trade_calendar[0]}")
+                    return cursor_date
         elif direction == 1:
             while cursor_date not in trade_calendar:
-               cursor_date = cursor_date + pd.Timedelta(days=1)
+               cursor_date = (pd.Timestamp(cursor_date) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
                if cursor_date in trade_calendar:
-                   return cursor_date.strftime('%Y-%m-%d')
-               elif cursor_date > trade_calendar[-1]:
-                   raise ValueError(f"[ERROR]\t交易日期 {cursor_date} 大于交易日历最小值 {trade_calendar[-1]}")
+                   return cursor_date
        
 
 def get_pre_trade_date(
@@ -182,16 +178,16 @@ def get_pre_trade_date(
 
     # 2. 处理 cursor_date
     if not cursor_date:
-        cursor_date = pd.Timestamp(datetime.date.today())
+        cursor_date = datetime.date.today().strftime("%Y-%m-%d")
     else:
-        cursor_date = pd.Timestamp(pd.Timestamp(cursor_date).date())
+        cursor_date = pd.Timestamp(cursor_date).strftime("%Y-%m-%d")
 
     if (cursor_date in trade_calendar) and inclusive:
-        return trade_calendar[trade_calendar.index(cursor_date) - n + 1].strftime("%Y-%m-%d")
+        return trade_calendar[trade_calendar.index(cursor_date) - n + 1]
     elif (cursor_date in trade_calendar):
-        return trade_calendar[trade_calendar.index(cursor_date) - n].strftime("%Y-%m-%d")
+        return trade_calendar[trade_calendar.index(cursor_date) - n]
     else:
-        return trade_calendar[trade_calendar.index(pd.Timestamp(get_real_trade_date(cursor_date))) - n + 1].strftime("%Y-%m-%d")
+        return trade_calendar[trade_calendar.index(get_real_trade_date(cursor_date)) - n + 1]
 
 
 def get_next_trade_date(
@@ -219,16 +215,16 @@ def get_next_trade_date(
 
     # 2. 处理 cursor_date
     if not cursor_date:
-        cursor_date = pd.Timestamp(datetime.date.today())
+        cursor_date = datetime.date.today().strftime("%Y-%m-%d")
     else:
-        cursor_date = pd.Timestamp(pd.Timestamp(cursor_date).date())
+        cursor_date = pd.Timestamp(cursor_date).strftime("%Y-%m-%d")
 
     if (cursor_date in trade_calendar) and inclusive:
-        return trade_calendar[trade_calendar.index(cursor_date) + n - 1].strftime("%Y-%m-%d")
+        return trade_calendar[trade_calendar.index(cursor_date) + n - 1]
     elif (cursor_date in trade_calendar):
-        return trade_calendar[trade_calendar.index(cursor_date) + n].strftime("%Y-%m-%d")
+        return trade_calendar[trade_calendar.index(cursor_date) + n]
     else:
-        return trade_calendar[trade_calendar.index(pd.Timestamp(get_real_trade_date(cursor_date, direction=1))) + n - 1].strftime("%Y-%m-%d")
+        return trade_calendar[trade_calendar.index(get_real_trade_date(cursor_date, direction=1)) + n - 1]
 
 
 def fmt_symbols(
@@ -357,3 +353,25 @@ def get_trade_time_type(
         return "auction4" 
     else:
         return "others"
+
+        
+def get_trade_dates(start_date: Union[str, datetime.date, pd.Timestamp], end_date: Union[str, datetime.date, pd.Timestamp]) -> List[str]:
+    """
+    获取指定日期之间的交易日，如果 start_date/end_date 是交易日，包含在交易日范围内 
+
+    Args:
+        start_date (Union[str, datetime.date, pd.Timestamp]): 开始日期
+        end_date (Union[str, datetime.date, pd.Timestamp]): 结束时间
+
+    Returns:
+        List[str]: 交易日范围
+    """
+    trade_cal = load_trade_cal()
+    range_start = pd.Timestamp(trade_cal[0])
+    range_end = pd.Timestamp(trade_cal[-1])
+    if (pd.Timestamp(start_date).date() <= range_start.date()) or (pd.Timestamp(end_date).date() >= range_end.date()):
+        raise ValueError(f"[ERROR]\t输入的日期范围 [{start_date}, {end_date}] 有越界，请检查日期是否在交易日历范围内")
+    
+    start_trade_date = get_real_trade_date(start_date, direction=1)
+    end_trade_date = get_real_trade_date(end_date, direction=-1)
+    return trade_cal[trade_cal.index(start_trade_date): trade_cal.index(end_trade_date)]
